@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+<title>Disaster City Challenge</title>
+<meta name="description" content="Disaster City Challenge: Build smart. Survive the disaster. An educational disaster-preparedness strategy game." />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<canvas id="ambient-bg-canvas" class="ambient-bg" aria-hidden="true"></canvas>
+
+<div id="app" role="main">
+
+  <!-- ============ HOME ============ -->
+  <section class="screen screen-home" id="screen-home" data-screen="home" aria-labelledby="home-title">
+    <div class="topbar">
+      <button class="icon-btn" id="btn-sound" aria-pressed="true" aria-label="Toggle sound">🔊</button>
+      <button class="icon-btn" id="btn-fullscreen" aria-pressed="false" aria-label="Toggle fullscreen"></button>
+      <button class="icon-btn" id="btn-settings" aria-label="Open settings">⚙️</button>
+    </div>
+    <div class="home-hero">
+      <div class="logo-mark" aria-hidden="true">🌎⚠️</div>
+      <h1 id="home-title" class="logo-text">DISASTER CITY<br /><span>CHALLENGE</span></h1>
+      <p class="subtitle">BUILD SMART. SURVIVE THE DISASTER.</p>
+      <button class="btn btn-primary btn-huge" id="btn-start-mission">
+        <span class="btn-icon">🚀</span> START MISSION
+      </button>
+      <div class="home-secondary-row">
+        <button class="btn btn-secondary" id="btn-how-to-play">📋 HOW TO PLAY</button>
+        <button class="btn btn-secondary" id="btn-view-history">📊 RESULTS</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ BIOME SELECTION ============ -->
+  <section class="screen" id="screen-biome" data-screen="biome" hidden aria-labelledby="biome-title">
+    <header class="screen-header">
+      <button class="btn-back" data-nav="home" aria-label="Back to home">←</button>
+      <h2 id="biome-title">CHOOSE YOUR BIOME</h2>
+      <span class="header-spacer"></span>
+    </header>
+    <div class="biome-grid" id="biome-grid"><!-- populated by JS --></div>
+  </section>
+
+  <!-- ============ TIME SELECTION ============ -->
+  <section class="screen" id="screen-time" data-screen="time" hidden aria-labelledby="time-title">
+    <header class="screen-header">
+      <button class="btn-back" data-nav="biome" aria-label="Back to biome selection">←</button>
+      <h2 id="time-title">CHOOSE PREPARATION TIME</h2>
+      <span class="header-spacer"></span>
+    </header>
+    <div class="time-grid" id="time-grid"><!-- populated by JS --></div>
+  </section>
+
+  <!-- ============ BRIEFING ============ -->
+  <section class="screen" id="screen-briefing" data-screen="briefing" hidden aria-labelledby="briefing-title">
+    <div class="briefing-layout">
+      <div class="briefing-panel glass-panel">
+        <h2 id="briefing-title" class="briefing-alert"><span class="briefing-alert-icon" id="briefing-alert-icon"></span> <span id="briefing-disaster-name">DISASTER WARNING</span></h2>
+        <dl class="mission-facts">
+          <div><dt>BIOME</dt><dd id="brief-biome"></dd></div>
+          <div><dt>THREAT</dt><dd id="brief-threat"></dd></div>
+          <div><dt>DIRECTION</dt><dd id="brief-direction"></dd></div>
+          <div><dt>MISSION</dt><dd id="brief-mission"></dd></div>
+          <div><dt>PREPARATION TIME</dt><dd id="brief-prep-time"></dd></div>
+        </dl>
+        <p class="briefing-goal">PLACE YOUR CITY WHERE IT CAN SURVIVE.</p>
+        <button class="btn btn-primary btn-huge" id="btn-begin-preparation">BEGIN PREPARATION ▶</button>
+      </div>
+      <div class="briefing-map-wrap">
+        <div class="zone-map" id="briefing-map">
+          <canvas id="briefing-map-canvas" width="480" height="480"></canvas>
+          <div class="direction-arrow" id="briefing-direction-arrow" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PREPARATION ============ -->
+  <section class="screen" id="screen-prep" data-screen="prep" hidden aria-labelledby="prep-title">
+    <h2 id="prep-title" class="sr-only">Building Placement</h2>
+    <div class="prep-layout">
+      <div class="prep-map-wrap">
+        <div class="zone-map" id="prep-map">
+          <canvas id="prep-map-canvas" width="480" height="480"></canvas>
+          <canvas id="prep-hazard-canvas" width="480" height="480" class="hazard-canvas"></canvas>
+          <canvas id="prep-debug-canvas" width="480" height="480" class="debug-grid-canvas" hidden></canvas>
+          <div class="direction-arrow" id="prep-direction-arrow" aria-hidden="true"></div>
+          <div class="building-layer" id="prep-building-layer" role="group" aria-label="Placed buildings"></div>
+          <div class="placement-marker" id="prep-placement-marker" aria-hidden="true" hidden></div>
+          <button type="button" class="map-click-surface" id="prep-map-surface" aria-label="Tap to place selected building"></button>
+        </div>
+        <p class="zone-toast" id="zone-toast" role="alert" aria-live="assertive"></p>
+      </div>
+
+      <div class="prep-sidebar glass-panel">
+        <div class="prep-timer-block">
+          <div class="prep-timer" id="prep-timer">01:00</div>
+          <div class="prep-timer-track"><div class="prep-timer-fill" id="prep-timer-fill"></div></div>
+        </div>
+
+        <h3 class="prep-heading">BUILD YOUR CITY</h3>
+        <div class="building-selector" id="building-selector">
+          <button class="building-btn selected" id="btn-select-house" data-type="house">
+            <span class="building-icon" id="building-icon-house"></span>
+            <span class="building-label">House</span>
+            <span class="building-remaining" id="remaining-house">0</span>
+          </button>
+          <button class="building-btn" id="btn-select-highrise" data-type="highrise">
+            <span class="building-icon" id="building-icon-highrise"></span>
+            <span class="building-label">High-Rise</span>
+            <span class="building-remaining" id="remaining-highrise">0</span>
+          </button>
+        </div>
+
+        <div class="prep-controls">
+          <button class="btn btn-secondary btn-icon-label" id="btn-undo"><span id="icon-undo"></span> Undo</button>
+          <button class="btn btn-secondary btn-icon-label" id="btn-reset-placements"><span id="icon-reset"></span> Reset</button>
+          <button class="btn btn-secondary btn-icon-label" id="btn-pause-prep"><span id="icon-pause-prep"></span> Pause</button>
+        </div>
+        <button class="btn btn-primary btn-large btn-start-sim" id="btn-start-simulation">START SIMULATION</button>
+        <p class="prep-hint">Select a building, then tap the terrain to place it. Hatched ground can't be built on.</p>
+      </div>
+    </div>
+
+    <div class="countdown-overlay" id="countdown-overlay" hidden aria-live="assertive">
+      <div class="countdown-number" id="countdown-number">10</div>
+      <div class="countdown-label" id="countdown-label">DISASTER IMMINENT</div>
+    </div>
+
+    <div class="lock-transition-overlay" id="lock-transition-overlay" hidden aria-live="assertive">
+      <div class="lock-transition-line" id="lock-transition-line-1">BUILDING PLACEMENT LOCKED</div>
+      <div class="lock-transition-line lock-transition-sub" id="lock-transition-line-2">DISASTER APPROACHING</div>
+      <div class="lock-transition-count" id="lock-transition-count"></div>
+    </div>
+
+    <div class="pause-overlay" id="prep-pause-overlay" hidden>
+      <div class="pause-panel glass-panel">
+        <h2>MISSION PAUSED</h2>
+        <button class="btn btn-primary btn-large" id="btn-resume-prep">RESUME</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SIMULATION ============ -->
+  <section class="screen" id="screen-simulation" data-screen="simulation" hidden aria-labelledby="sim-title">
+    <div class="sim-header">
+      <div>
+        <h2 id="sim-title" class="sim-status-label">DISASTER SIMULATION IN PROGRESS</h2>
+        <p class="sim-subhead" id="sim-subhead">Disaster · Threat Level</p>
+      </div>
+      <div class="sim-controls">
+        <div class="sim-speed-group" role="group" aria-label="Simulation speed">
+          <button class="btn btn-secondary sim-speed-btn selected" id="btn-speed-1" data-speed="1">1×</button>
+          <button class="btn btn-secondary sim-speed-btn" id="btn-speed-2" data-speed="2">2×</button>
+        </div>
+        <button class="btn btn-secondary btn-icon-label" id="btn-pause-sim"><span id="icon-pause-sim"></span> Pause</button>
+      </div>
+    </div>
+    <div class="zone-map zone-map-large" id="sim-map">
+      <canvas id="sim-map-canvas" width="480" height="480"></canvas>
+      <canvas id="sim-hazard-canvas" width="480" height="480" class="hazard-canvas"></canvas>
+      <canvas id="sim-effect-canvas" width="480" height="480" class="hazard-canvas"></canvas>
+      <div class="direction-arrow" id="sim-direction-arrow" aria-hidden="true"></div>
+      <div class="building-layer" id="sim-building-layer"></div>
+    </div>
+    <div class="sim-progress-track"><div class="sim-progress-fill" id="sim-progress-fill"></div></div>
+
+    <div class="pause-overlay" id="sim-pause-overlay" hidden>
+      <div class="pause-panel glass-panel">
+        <h2>SIMULATION PAUSED</h2>
+        <button class="btn btn-primary btn-large" id="btn-resume-sim">RESUME</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RESULT ============ -->
+  <section class="screen" id="screen-result" data-screen="result" hidden aria-labelledby="result-title">
+    <div class="result-layout">
+      <div class="result-panel glass-panel">
+        <p class="result-report-label">DISASTER RESPONSE REPORT</p>
+        <h2 id="result-title" class="result-headline">CITY SURVIVED</h2>
+        <div class="result-score-row">
+          <span class="result-score" id="result-score">0</span>
+          <span class="result-max">/ 100</span>
+        </div>
+        <div class="result-rank" id="result-rank"><span class="rank-badge-icon" id="result-rank-icon"></span><span id="result-rank-label">RANK</span></div>
+
+        <div class="result-stats-grid">
+          <div class="result-stat"><span id="result-population">0%</span><small>Population Protected</small></div>
+          <div class="result-stat"><span id="result-planning-time">0s</span><small>Planning Time Used</small></div>
+          <div class="result-stat"><span id="result-threat-level">-</span><small>Threat Level</small></div>
+        </div>
+
+        <h3 class="modal-subtitle">Score Breakdown</h3>
+        <div class="score-breakdown" id="result-breakdown"></div>
+
+        <h3 class="modal-subtitle">Structures</h3>
+        <div class="structures-breakdown" id="result-structures"></div>
+
+        <h3 class="modal-subtitle">Educational Report</h3>
+        <div id="result-report" class="report-list"></div>
+
+        <div id="result-achievements" class="achievement-list"></div>
+
+        <div class="mission-actions">
+          <button class="btn btn-primary btn-large" id="btn-play-same-biome">PLAY SAME BIOME AGAIN</button>
+          <button class="btn btn-secondary" id="btn-choose-another-biome">CHOOSE ANOTHER BIOME</button>
+          <button class="btn btn-secondary" id="btn-result-view-history">VIEW RESULTS</button>
+          <button class="btn btn-ghost" id="btn-result-main-menu">MAIN MENU</button>
+        </div>
+      </div>
+
+      <div class="result-map-wrap">
+        <div class="zone-map" id="result-map">
+          <canvas id="result-map-canvas" width="480" height="480"></canvas>
+          <canvas id="result-hazard-canvas" width="480" height="480" class="hazard-canvas" hidden></canvas>
+          <div class="building-layer" id="result-building-layer"></div>
+        </div>
+        <button class="btn btn-secondary" id="btn-toggle-risk-analysis">SHOW RISK ANALYSIS</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RESULTS HISTORY ============ -->
+  <section class="screen" id="screen-history" data-screen="history" hidden aria-labelledby="history-title">
+    <header class="screen-header">
+      <button class="btn-back" data-nav="home" aria-label="Back to home">←</button>
+      <h2 id="history-title">RESULTS HISTORY</h2>
+      <span class="header-spacer"></span>
+    </header>
+
+    <div class="history-summary" id="history-summary"><!-- populated by JS --></div>
+
+    <h3 class="modal-subtitle">Achievements</h3>
+    <div id="history-achievements" class="achievement-list"></div>
+
+    <h3 class="modal-subtitle">Recent Missions</h3>
+    <div class="history-list" id="history-list"></div>
+  </section>
+
+</div>
+
+<!-- ============ SETTINGS MODAL ============ -->
+<div class="modal-overlay" id="settings-modal" hidden>
+  <div class="modal-panel glass-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <header class="modal-header">
+      <h2 id="settings-title">Settings</h2>
+      <button class="icon-btn" id="btn-close-settings" aria-label="Close settings">✕</button>
+    </header>
+    <div class="modal-body">
+      <div class="setting-row">
+        <label for="toggle-sound">Sound</label>
+        <input type="checkbox" id="toggle-sound" checked />
+      </div>
+      <div class="setting-row">
+        <label for="toggle-reduced-effects">Reduced Effects</label>
+        <input type="checkbox" id="toggle-reduced-effects" />
+      </div>
+      <div class="setting-row">
+        <label for="toggle-debug-grid">Show Simulation Grid (teacher/dev)</label>
+        <input type="checkbox" id="toggle-debug-grid" />
+      </div>
+      <h3 class="modal-subtitle">Data</h3>
+      <div class="settings-actions">
+        <button class="btn btn-ghost" id="btn-reset-current-mission">Reset Current Mission</button>
+        <button class="btn btn-ghost btn-danger" id="btn-reset-all-results">Reset All Results</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CONFIRM MODAL ============ -->
+<div class="modal-overlay" id="confirm-modal" hidden>
+  <div class="modal-panel glass-panel" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+    <header class="modal-header"><h2 id="confirm-title">Are you sure?</h2></header>
+    <div class="modal-body">
+      <p id="confirm-message">This cannot be undone.</p>
+      <div class="mission-actions">
+        <button class="btn btn-danger" id="btn-confirm-yes">Yes, Reset</button>
+        <button class="btn btn-ghost" id="btn-confirm-no">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ HOW TO PLAY MODAL ============ -->
+<div class="modal-overlay" id="howto-modal" hidden>
+  <div class="modal-panel glass-panel" role="dialog" aria-modal="true" aria-labelledby="howto-title">
+    <header class="modal-header">
+      <h2 id="howto-title">How to Play</h2>
+      <button class="icon-btn" id="btn-close-howto" aria-label="Close">✕</button>
+    </header>
+    <div class="modal-body">
+      <ol class="howto-list">
+        <li>Choose a biome: Desert, Mountain, Snow, or Coast.</li>
+        <li>A disaster, its direction, and a building mission are revealed.</li>
+        <li>Choose your preparation time: 45, 60, or 90 seconds.</li>
+        <li>Read the briefing, then place your houses and high-rises on the safest zones you can find.</li>
+        <li>When time runs out, the disaster strikes! Watch the simulation play out.</li>
+        <li>Score points for survival, smart placement, and mission completion.</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ============ RESUME MODAL ============ -->
+<div class="modal-overlay" id="resume-modal" hidden>
+  <div class="modal-panel glass-panel" role="dialog" aria-modal="true" aria-labelledby="resume-title">
+    <header class="modal-header"><h2 id="resume-title">MISSION IN PROGRESS</h2></header>
+    <div class="modal-body">
+      <p id="resume-message">An unfinished mission was found.</p>
+      <div class="mission-actions">
+        <button class="btn btn-primary btn-large" id="btn-resume-continue">RESUME MISSION</button>
+        <button class="btn btn-ghost" id="btn-resume-new">START NEW MISSION</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sr-only" id="live-region" aria-live="polite"></div>
+
+<script src="js/random-engine.js"></script>
+<script src="js/biome-data.js"></script>
+<script src="js/game-data.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/icons.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/effects.js"></script>
+<script src="js/simulation-engine.js"></script>
+<script src="js/scoring.js"></script>
+<script src="js/game-state.js"></script>
+<script src="js/calibration.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
